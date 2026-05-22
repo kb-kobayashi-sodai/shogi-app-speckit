@@ -1,6 +1,7 @@
 import { useReducer } from 'react'
 import type { Dispatch } from 'react'
-import type { GameState, Position, CapturablePieceType, Move, GameMode } from '../game/types'
+
+import type { GameState, Position, CapturablePieceType, Move, GameMode, PendingAnimation, Piece } from '../game/types'
 import { createInitialGameState, processMove, processPromotionChoice, processResign, processReset } from '../game/gameEngine'
 import { getLegalMovesForPiece, getLegalDropPositions } from '../game/legalMoves'
 
@@ -13,22 +14,76 @@ export type GameAction =
   | { type: 'CHANGE_MODE'; payload: GameMode }
   | { type: 'COMPUTER_MOVE'; payload: Move }
   | { type: 'SET_COMPUTER_THINKING'; payload: boolean }
+  | { type: 'QUEUE_ANIMATION'; payload: PendingAnimation }
+  | { type: 'ANIMATION_START'; payload: string }
+  | { type: 'ANIMATION_COMPLETE'; payload: string }
+
+function makeAnimId(): string {
+  return `anim-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
 
 function reducer(state: GameState, action: GameAction): GameState {
   if (action.type === 'RESET') return processReset(state.gameMode)
-  if (action.type === 'RESIGN') return processResign(state)
+
+  if (action.type === 'RESIGN') {
+    return { ...processResign(state), animationQueue: [], isAnimating: false }
+  }
+
   if (action.type === 'PROMOTION_CHOICE') return processPromotionChoice(state, action.payload)
   if (action.type === 'CHANGE_MODE') return createInitialGameState(action.payload)
   if (action.type === 'SET_COMPUTER_THINKING') return { ...state, isComputerThinking: action.payload }
-  if (action.type === 'COMPUTER_MOVE') {
-    const newState = processMove(state, action.payload)
-    return { ...newState, isComputerThinking: false }
+
+  if (action.type === 'QUEUE_ANIMATION') {
+    return { ...state, animationQueue: [...state.animationQueue, action.payload] }
   }
 
-  // 対局終了・成り選択中・コンピュータ思考中は操作不可
+  if (action.type === 'ANIMATION_START') {
+    return { ...state, isAnimating: true }
+  }
+
+  if (action.type === 'ANIMATION_COMPLETE') {
+    const pending = state.animationQueue[0]
+    if (!pending || pending.id !== action.payload) return state
+    const baseState: GameState = {
+      ...state,
+      animationQueue: state.animationQueue.slice(1),
+      isAnimating: false,
+    }
+    return processMove(baseState, pending.move)
+  }
+
+  if (action.type === 'COMPUTER_MOVE') {
+    const move = action.payload
+    const movingPiece: Piece =
+      move.type === 'move'
+        ? move.piece
+        : { type: move.pieceType, owner: move.player }
+    const capturedPiece = move.type === 'move' ? state.board[move.to.row][move.to.col] : null
+    const anim: PendingAnimation = {
+      id: makeAnimId(),
+      kind: move.type === 'move' ? 'move' : 'drop',
+      piece: movingPiece,
+      from:
+        move.type === 'move'
+          ? { type: 'cell', position: move.from }
+          : { type: 'captured', owner: move.player },
+      to: { type: 'cell', position: move.to },
+      move,
+      captureAnimation: capturedPiece
+        ? {
+            piece: capturedPiece,
+            from: { type: 'cell', position: move.to },
+            to: { type: 'captured', owner: state.currentPlayer },
+          }
+        : undefined,
+    }
+    return { ...state, isComputerThinking: false, animationQueue: [...state.animationQueue, anim] }
+  }
+
   if (state.status === 'checkmate' || state.status === 'resigned' || state.status === 'draw') return state
   if (state.pendingPromotion !== null) return state
   if (state.isComputerThinking) return state
+  if (state.isAnimating) return state
 
   if (action.type === 'CAPTURED_PIECE_CLICK') {
     const pieceType = action.payload
@@ -41,12 +96,7 @@ function reducer(state: GameState, action: GameAction): GameState {
     }
 
     const drops = getLegalDropPositions(state.board, pieceType, state.currentPlayer)
-    return {
-      ...state,
-      selectedCapturedPiece: pieceType,
-      selectedPosition: null,
-      legalMoves: drops,
-    }
+    return { ...state, selectedCapturedPiece: pieceType, selectedPosition: null, legalMoves: drops }
   }
 
   if (action.type === 'CELL_CLICK') {
@@ -55,13 +105,28 @@ function reducer(state: GameState, action: GameAction): GameState {
     if (state.selectedCapturedPiece !== null) {
       const isLegal = state.legalMoves.some(m => m.row === clickedPos.row && m.col === clickedPos.col)
       if (isLegal) {
+        const pieceType = state.selectedCapturedPiece
         const move: Move = {
           type: 'drop',
           to: clickedPos,
-          pieceType: state.selectedCapturedPiece,
+          pieceType,
           player: state.currentPlayer,
         }
-        return processMove({ ...state, selectedCapturedPiece: null, selectedPosition: null, legalMoves: [] }, move)
+        const anim: PendingAnimation = {
+          id: makeAnimId(),
+          kind: 'drop',
+          piece: { type: pieceType, owner: state.currentPlayer },
+          from: { type: 'captured', owner: state.currentPlayer },
+          to: { type: 'cell', position: clickedPos },
+          move,
+        }
+        return {
+          ...state,
+          selectedCapturedPiece: null,
+          selectedPosition: null,
+          legalMoves: [],
+          animationQueue: [...state.animationQueue, anim],
+        }
       }
       return { ...state, selectedCapturedPiece: null, selectedPosition: null, legalMoves: [] }
     }
@@ -90,6 +155,7 @@ function reducer(state: GameState, action: GameAction): GameState {
       return { ...state, selectedPosition: null, legalMoves: [] }
     }
 
+    const capturedPiece = state.board[clickedPos.row][clickedPos.col]
     const move: Move = {
       type: 'move',
       from: state.selectedPosition,
@@ -97,7 +163,28 @@ function reducer(state: GameState, action: GameAction): GameState {
       piece: selectedPiece,
       promoted: false,
     }
-    return processMove({ ...state, selectedPosition: null, legalMoves: [] }, move)
+    const anim: PendingAnimation = {
+      id: makeAnimId(),
+      kind: 'move',
+      piece: selectedPiece,
+      from: { type: 'cell', position: state.selectedPosition },
+      to: { type: 'cell', position: clickedPos },
+      move,
+      captureAnimation: capturedPiece
+        ? {
+            piece: capturedPiece,
+            from: { type: 'cell', position: clickedPos },
+            to: { type: 'captured', owner: state.currentPlayer },
+          }
+        : undefined,
+    }
+    return {
+      ...state,
+      selectedPosition: null,
+      legalMoves: [],
+      selectedCapturedPiece: null,
+      animationQueue: [...state.animationQueue, anim],
+    }
   }
 
   return state

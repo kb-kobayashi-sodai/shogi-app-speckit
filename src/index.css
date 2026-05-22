@@ -5,10 +5,10 @@
 }
 
 :root {
-  --board-bg: #dcb67a;
-  --board-line: #8b6914;
+  --board-bg: #f0ca8e;
+  --board-line: #9f7d28;
   --cell-size: clamp(40px, 8vw, 60px);
-  --piece-font: clamp(16px, 3vw, 22px);
+  --piece-font: calc(var(--cell-size) * 0.30);
   --sente-color: #1a1a1a;
   --gote-color: #1a1a1a;
   --select-bg: rgba(66, 135, 245, 0.5);
@@ -90,6 +90,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  transform: perspective(1400px) rotateX(10deg);
+  transform-origin: center bottom;
 }
 
 .board-col-labels {
@@ -110,9 +112,20 @@ body {
   display: grid;
   grid-template-columns: repeat(9, var(--cell-size));
   grid-template-rows: repeat(9, var(--cell-size));
-  background: var(--board-bg);
-  border: 2px solid var(--board-line);
-  box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent calc(var(--cell-size) - 1px),
+      rgba(139, 92, 20, 0.12) calc(var(--cell-size) - 1px),
+      rgba(139, 92, 20, 0.12) var(--cell-size)
+    ),
+    linear-gradient(150deg, #fcdc8e 0%, #e8bc58 50%, #d8a648 100%);
+  border: 3px solid var(--board-line);
+  box-shadow:
+    0 8px 0 #9f722e,
+    0 10px 16px rgba(0,0,0,0.45),
+    inset 0 1px 2px rgba(255,255,220,0.4);
 }
 
 .board-row-labels {
@@ -162,24 +175,94 @@ body {
 }
 
 /* Piece */
+/* wrapper: filter はここに置き、clip-path と分離して shadow がクリップされないようにする */
+.piece-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transform: translateY(-3px);
+  filter:
+    drop-shadow(0px 2px 0px #8e5e1e)
+    drop-shadow(0px 3px 0px #704c1a)
+    drop-shadow(0px 7px 9px rgba(0,0,0,0.40));
+  transition: filter 0.15s;
+}
+
+.piece-wrap--flying {
+  pointer-events: none;
+}
+
 .piece {
   font-size: var(--piece-font);
-  font-weight: bold;
+  font-weight: 900;
+  font-family: 'Noto Serif JP', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
   line-height: 1;
   user-select: none;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: calc(var(--cell-size) * 0.82);
+  height: calc(var(--cell-size) * 0.93);
+  clip-path: polygon(50% 0%, 86% 22%, 90% 100%, 10% 100%, 14% 22%);
+  background:
+    /* 控えめな温かみのある表面反射（白ではなくアンバー寄り） */
+    radial-gradient(circle at 36% 22%, rgba(255,250,215,0.44) 0%, rgba(255,248,200,0) 42%),
+    /* ドーム状の3D感：中央明→周辺暗 */
+    radial-gradient(ellipse at 48% 42%, #fef2a8 0%, #ebca5a 48%, #ddb845 76%, #ccaa38 100%);
+  /* 側面の厚み：5段重ねで明確な奥行き */
+  transition: opacity 0.1s;
 }
 
 .piece--sente {
-  color: var(--sente-color);
+  color: #140800;
+  text-shadow:
+    0  1px 0   rgba(245,185,70,0.55),
+    0 -1px 1px rgba(0,0,0,0.80),
+    0.5px 0 0  rgba(0,0,0,0.25),
+    -0.5px 0 0 rgba(0,0,0,0.25);
 }
 
 .piece--gote {
-  color: var(--gote-color);
+  color: #140800;
+  text-shadow:
+    0  1px 0   rgba(245,185,70,0.55),
+    0 -1px 1px rgba(0,0,0,0.80),
+    0.5px 0 0  rgba(0,0,0,0.25),
+    -0.5px 0 0 rgba(0,0,0,0.25);
 }
 
 .piece--rotated {
   transform: rotate(180deg);
+}
+
+.piece--invisible {
+  opacity: 0;
+}
+
+/* Promotion flip animation */
+@keyframes piece-flip {
+  0%   { transform: rotateY(0deg); }
+  45%  { transform: rotateY(90deg); }
+  55%  { transform: rotateY(90deg); }
+  100% { transform: rotateY(0deg); }
+}
+
+@keyframes piece-flip-rotated {
+  0%   { transform: rotate(180deg) rotateY(0deg); }
+  45%  { transform: rotate(180deg) rotateY(90deg); }
+  55%  { transform: rotate(180deg) rotateY(90deg); }
+  100% { transform: rotate(180deg) rotateY(0deg); }
+}
+
+.piece--flipping {
+  animation: piece-flip 0.35s ease-in-out;
+}
+
+.piece--rotated.piece--flipping {
+  animation: piece-flip-rotated 0.35s ease-in-out;
 }
 
 /* Captured pieces */
@@ -537,5 +620,12 @@ body {
   :root {
     --cell-size: 50px;
     --piece-font: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .piece--flipping,
+  .piece--rotated.piece--flipping {
+    animation-duration: 0ms;
   }
 }

@@ -1,10 +1,10 @@
 import type { PieceType, CapturablePieceType, Player } from './types'
 
 const LABELS: Record<PieceType, string> = {
-  fu: '歩', kyo: '香', kei: '桂', gin: '銀', kin: '金',
-  kaku: '角', hi: '飛', ou: '王',
-  tofu: 'と', narikyo: '杏', narikei: '圭', narigin: '全',
-  uma: '馬', ryu: '龍',
+  fu: '歩兵', kyo: '香車', kei: '桂馬', gin: '銀将', kin: '金将',
+  kaku: '角行', hi: '飛車', ou: '王将',
+  tofu: 'と', narikyo: '成香', narikei: '成桂', narigin: '成銀',
+  uma: '竜馬', ryu: '竜王',
 }
 
 const PROMOTABLE: Set<PieceType> = new Set(['fu','kyo','kei','gin','kaku','hi'])

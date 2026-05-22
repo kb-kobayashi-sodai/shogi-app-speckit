@@ -1,14 +1,17 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+
 import { useGame } from './hooks/useGame'
 import { useComputerPlayer } from './hooks/useComputerPlayer'
+import { useAnimation } from './hooks/useAnimation'
 import { Board } from './components/Board/Board'
+import { AnimatingPiece } from './components/Board/AnimatingPiece'
 import { GameStatus } from './components/GameStatus/GameStatus'
 import { PromotionDialog } from './components/PromotionDialog/PromotionDialog'
 import { CapturedPieces } from './components/CapturedPieces/CapturedPieces'
 import { GameControls } from './components/GameControls/GameControls'
 import { SideMenu } from './components/SideMenu/SideMenu'
 import { ThinkingOverlay } from './components/ThinkingOverlay/ThinkingOverlay'
-import type { GameMode } from './game/types'
+import type { GameMode, Position } from './game/types'
 
 export default function App() {
   const {
@@ -23,8 +26,19 @@ export default function App() {
   } = useGame()
 
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false)
+  const [flippingPosition, setFlippingPosition] = useState<Position | null>(null)
+
+  const boardRef = useRef<HTMLDivElement>(null)
+  const senteCapturedRef = useRef<HTMLDivElement>(null)
+  const goteCapturedRef = useRef<HTMLDivElement>(null)
 
   useComputerPlayer(state, dispatch)
+
+  const { currentAnimation, mainStartRect, mainEndRect, captureStartRect, captureEndRect, onComplete } =
+    useAnimation(state, dispatch, { boardRef, senteCapturedRef, goteCapturedRef })
+
+  const animatingFromPos: Position | null =
+    currentAnimation?.from.type === 'cell' ? currentAnimation.from.position : null
 
   const isGameActive = state.status === 'playing' || state.status === 'check'
 
@@ -41,6 +55,15 @@ export default function App() {
     }
     handleChangeMode(mode)
     setIsSideMenuOpen(false)
+  }
+
+  function handlePromotionChoiceWithFlip(promote: boolean) {
+    const pendingTo = state.pendingPromotion?.to ?? null
+    handlePromotionChoice(promote)
+    if (pendingTo && promote) {
+      setFlippingPosition(pendingTo)
+      setTimeout(() => setFlippingPosition(null), 380)
+    }
   }
 
   return (
@@ -68,6 +91,7 @@ export default function App() {
           selectedPieceType={state.selectedCapturedPiece}
           onPieceClick={handleCapturedPieceClick}
           isGameOver={state.status === 'checkmate' || state.status === 'resigned' || state.status === 'draw'}
+          capturedRef={goteCapturedRef}
         />
 
         <Board
@@ -77,6 +101,10 @@ export default function App() {
           currentPlayer={state.currentPlayer}
           status={state.status}
           onCellClick={handleCellClick}
+          boardRef={boardRef}
+          animatingFromPos={animatingFromPos}
+          pendingPromotion={state.pendingPromotion}
+          flippingPosition={flippingPosition}
         />
 
         <CapturedPieces
@@ -86,10 +114,23 @@ export default function App() {
           selectedPieceType={state.selectedCapturedPiece}
           onPieceClick={handleCapturedPieceClick}
           isGameOver={state.status === 'checkmate' || state.status === 'resigned' || state.status === 'draw'}
+          capturedRef={senteCapturedRef}
         />
 
         <ThinkingOverlay isVisible={state.isComputerThinking} />
       </div>
+
+      {currentAnimation && mainStartRect && mainEndRect && (
+        <AnimatingPiece
+          piece={currentAnimation.piece}
+          startRect={mainStartRect}
+          endRect={mainEndRect}
+          onComplete={onComplete}
+          capturePiece={currentAnimation.captureAnimation?.piece}
+          captureStartRect={captureStartRect ?? undefined}
+          captureEndRect={captureEndRect ?? undefined}
+        />
+      )}
 
       <GameControls
         status={state.status}
@@ -101,7 +142,7 @@ export default function App() {
       {state.pendingPromotion && (
         <PromotionDialog
           pendingPromotion={state.pendingPromotion}
-          onChoice={handlePromotionChoice}
+          onChoice={handlePromotionChoiceWithFlip}
         />
       )}
     </div>
