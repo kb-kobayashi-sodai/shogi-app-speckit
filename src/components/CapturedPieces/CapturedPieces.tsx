@@ -38,15 +38,22 @@ export function CapturedPieces({
           const count = captured[type]
           if (count === 0) return null
           const isSelected = isCurrentPlayer && selectedPieceType === type
+          const label = getPieceLabel(type)
           return (
             <button
               key={type}
-              className={`captured-piece${isSelected ? ' captured-piece--selected' : ''}${isRotated ? ' captured-piece--rotated' : ''}`}
+              className={`captured-piece${isSelected ? ' captured-piece--selected' : ''}`}
               onClick={() => !isGameOver && isCurrentPlayer && onPieceClick(type)}
               disabled={isGameOver || !isCurrentPlayer}
-              aria-label={`${getPieceLabel(type)} ${count}枚`}
+              aria-label={`${label} ${count}枚`}
             >
-              <span className="captured-piece-label">{getPieceLabel(type)}</span>
+              <span className="piece-wrap">
+                <span className={`piece piece--${owner}${isRotated ? ' piece--rotated' : ''}`}>
+                  {[...label].map((char, i) => (
+                    <span key={char + i} aria-hidden="true">{char}</span>
+                  ))}
+                </span>
+              </span>
               {count > 1 && <span className="captured-piece-count">{count}</span>}
             </button>
           )
