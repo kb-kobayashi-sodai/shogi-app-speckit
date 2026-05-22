@@ -1,0 +1,56 @@
+# コーディングルール（TypeScript/JavaScript）
+
+## 目的
+
+型安全性・可読性・保守性を確保し、バグの混入を防ぐ。
+
+## ルール一覧
+
+### 開発フロー
+
+- コーディングは原則として SpecKit（`/speckit-*` コマンド群）を使用して進める
+- SpecKit でブランチを切って作業している場合：
+  - 依頼内容が現在の `tasks.md` のタスク範囲内であれば、そのまま実装を追加する
+  - 依頼内容が `tasks.md` のタスク範囲外であれば、別ブランチで実装するかユーザーに確認してから着手する
+
+### TypeScript
+
+- `strict: true` を必ず有効にする — 型チェックの甘さによるバグを防止
+- `any` 型の使用禁止 — 代わりに `unknown` + 型ガード、または具体的な型を使う
+- 型推論が明確な場合は型注釈を省略してよい（変数宣言の右辺が明確な場合）
+- 関数の戻り値型は明示する（特にpublicなAPIになる関数）
+- `interface` はオブジェクト形状の定義に、`type` はユニオン型・交差型・エイリアスに使う
+
+### インポート順序
+
+1. 外部ライブラリ（`react`, `react-dom` 等）
+2. プロジェクト内の型定義（`src/game/types.ts`）
+3. プロジェクト内のユーティリティ・定数（`src/game/`）
+4. プロジェクト内のコンポーネント・フック（`src/components/`, `src/hooks/`）
+5. スタイルファイル（`.css`）
+
+各グループの間に空行を入れる。
+
+### 非同期処理
+
+- `async/await` を優先し、`.then()/.catch()` チェーンは避ける
+- `try/catch` で必ずエラーをハンドルする（サイレントな失敗を防ぐ）
+
+### 変数・関数の命名
+
+- 変数・関数: camelCase
+- 定数（変更されない値）: UPPER_SNAKE_CASE
+- 型・インターフェース・コンポーネント: PascalCase
+- 真偽値変数: `is`, `has`, `can`, `should` プレフィックス（例: `isComputerThinking`, `isGameOver`）
+
+### このプロジェクト固有の命名例（参考）
+
+- 真偽値: `isComputerThinking`, `isGameOver`, `isSideMenuOpen`
+- ゲーム状態: `currentPlayer`, `selectedPosition`, `gameMode`, `pendingPromotion`
+- 定数: `BOARD_SIZE`, `INITIAL_BOARD`, `ENEMY_ZONE_ROWS`（`src/game/constants.ts`）
+
+### その他
+
+- マジックナンバーは `src/game/constants.ts` に定数として定義する（例: `BOARD_SIZE = 9`）
+- コメントは「なぜ」を書く。「何をするか」はコードから読み取れるべき
+- 未使用の変数・インポートを残さない
