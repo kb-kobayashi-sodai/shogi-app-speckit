@@ -1,3 +1,5 @@
+import type { RefObject } from 'react'
+
 import type { CapturedPieces as CapturedPiecesType, CapturablePieceType, Player } from '../../game/types'
 import { getPieceLabel } from '../../game/pieces'
 
@@ -10,6 +12,7 @@ interface CapturedPiecesProps {
   selectedPieceType: CapturablePieceType | null
   onPieceClick: (pieceType: CapturablePieceType) => void
   isGameOver: boolean
+  capturedRef?: RefObject<HTMLDivElement>
 }
 
 export function CapturedPieces({
@@ -19,12 +22,16 @@ export function CapturedPieces({
   selectedPieceType,
   onPieceClick,
   isGameOver,
+  capturedRef,
 }: CapturedPiecesProps) {
   const ownerLabel = owner === 'sente' ? '▲先手' : '△後手'
   const isRotated = owner === 'gote'
 
   return (
-    <div className={`captured-pieces captured-pieces--${owner}${isCurrentPlayer ? ' captured-pieces--active' : ''}`}>
+    <div
+      ref={capturedRef}
+      className={`captured-pieces captured-pieces--${owner}${isCurrentPlayer ? ' captured-pieces--active' : ''}`}
+    >
       <div className="captured-label">{ownerLabel}の持ち駒</div>
       <div className="captured-list">
         {PIECE_ORDER.map(type => {

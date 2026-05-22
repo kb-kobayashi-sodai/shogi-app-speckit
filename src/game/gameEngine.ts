@@ -79,6 +79,8 @@ export function createInitialGameState(gameMode: GameMode = 'human'): GameState 
     selectedCapturedPiece: null,
     gameMode,
     isComputerThinking: false,
+    animationQueue: [],
+    isAnimating: false,
   }
 }
 

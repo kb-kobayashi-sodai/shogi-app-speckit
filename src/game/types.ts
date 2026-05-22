@@ -51,6 +51,24 @@ export interface PendingPromotion {
   piece: Piece
 }
 
+export type AnimationTarget =
+  | { type: 'cell'; position: Position }
+  | { type: 'captured'; owner: Player }
+
+export interface PendingAnimation {
+  id: string
+  kind: 'move' | 'drop'
+  piece: Piece
+  from: AnimationTarget
+  to: AnimationTarget
+  move: Move
+  captureAnimation?: {
+    piece: Piece
+    from: AnimationTarget
+    to: AnimationTarget
+  }
+}
+
 export interface GameState {
   board: Board
   capturedPieces: AllCapturedPieces
@@ -64,4 +82,6 @@ export interface GameState {
   selectedCapturedPiece: CapturablePieceType | null
   gameMode: GameMode
   isComputerThinking: boolean
+  animationQueue: PendingAnimation[]
+  isAnimating: boolean
 }

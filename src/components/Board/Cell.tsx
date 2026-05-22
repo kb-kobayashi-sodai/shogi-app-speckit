@@ -7,10 +7,12 @@ interface CellProps {
   isSelected: boolean
   isLegalMove: boolean
   isInCheck: boolean
+  isAnimating: boolean
+  isFlipping: boolean
   onClick: (position: Position) => void
 }
 
-export function Cell({ position, piece, isSelected, isLegalMove, isInCheck, onClick }: CellProps) {
+export function Cell({ position, piece, isSelected, isLegalMove, isInCheck, isAnimating, isFlipping, onClick }: CellProps) {
   let className = 'cell'
   if (isSelected) className += ' cell--selected'
   else if (isInCheck) className += ' cell--check'
@@ -22,9 +24,11 @@ export function Cell({ position, piece, isSelected, isLegalMove, isInCheck, onCl
       onClick={() => onClick(position)}
       role="gridcell"
       aria-label={`${9 - position.col}${position.row + 1}`}
+      data-row={position.row}
+      data-col={position.col}
     >
       {isLegalMove && !piece && <div className="legal-dot" />}
-      {piece && <Piece piece={piece} />}
+      {piece && <Piece piece={piece} isAnimating={isAnimating} isFlipping={isFlipping} />}
     </div>
   )
 }
