@@ -17,11 +17,13 @@ export function Piece({ piece, isAnimating = false, isFlipping = false }: PieceP
   if (isFlipping) className += ' piece--flipping'
 
   return (
-    <span
-      className={className}
-      aria-label={`${piece.owner === 'sente' ? '先手' : '後手'}${label}`}
-    >
-      {label}
+    <span className="piece-wrap">
+      <span
+        className={className}
+        aria-label={`${piece.owner === 'sente' ? '先手' : '後手'}${label}`}
+      >
+        {[...label].map((char, i) => <span key={char + i} aria-hidden="true">{char}</span>)}
+      </span>
     </span>
   )
 }

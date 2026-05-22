@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react'
 import type { Piece as PieceType_i } from '../../game/types'
 import { getPieceLabel } from '../../game/pieces'
 
-const ANIMATION_DURATION = 420
+const ANIMATION_DURATION = 300
 
 interface AnimatingPieceProps {
   piece: PieceType_i
@@ -27,6 +27,7 @@ export function AnimatingPiece({
   const pieceRef = useRef<HTMLSpanElement>(null)
   const captureRef = useRef<HTMLSpanElement>(null)
   const completedRef = useRef(false)
+  const captureAnimRef = useRef<Animation | null>(null)
 
   useEffect(() => {
     const el = pieceRef.current
@@ -40,17 +41,17 @@ export function AnimatingPiece({
 
     const dx = endRect.left - startRect.left
     const dy = endRect.top - startRect.top
-    const arc = Math.min(Math.max(Math.abs(dx), Math.abs(dy)) * 0.35, 60)
+    const liftY = Math.min(Math.max(Math.abs(dx), Math.abs(dy)) * 0.12, 24)
 
     const mainAnim = el.animate(
       [
-        { transform: 'translate(0px, 0px) translateZ(0px)', easing: 'ease-in' },
+        { transform: 'translate(0px, 0px) scale(1)', easing: 'cubic-bezier(0.15, 0, 0.3, 1)' },
         {
-          transform: `translate(${dx / 2}px, ${dy / 2}px) translateZ(${arc}px)`,
-          easing: 'ease-out',
-          offset: 0.5,
+          transform: `translate(${dx * 0.5}px, ${dy * 0.5 - liftY}px) scale(1.08)`,
+          easing: 'cubic-bezier(0.55, 0, 0.85, 1)',
+          offset: 0.38,
         },
-        { transform: `translate(${dx}px, ${dy}px) translateZ(0px)` },
+        { transform: `translate(${dx}px, ${dy}px) scale(1)` },
       ],
       { duration, fill: 'forwards' },
     )
@@ -73,6 +74,7 @@ export function AnimatingPiece({
         ],
         { duration: prefersReducedMotion ? 0 : Math.round(ANIMATION_DURATION * 0.75), fill: 'forwards' },
       )
+      captureAnimRef.current = captureAnim
       animations.push(captureAnim.finished)
     }
 
@@ -83,10 +85,16 @@ export function AnimatingPiece({
           onComplete()
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!completedRef.current) {
+          completedRef.current = true
+          onComplete()
+        }
+      })
 
     return () => {
       mainAnim.cancel()
+      captureAnimRef.current?.cancel()
     }
   }, [])
 
@@ -97,7 +105,7 @@ export function AnimatingPiece({
     <>
       <span
         ref={pieceRef}
-        className={`piece piece--${piece.owner}${isGoteMain ? ' piece--rotated' : ''} piece--flying`}
+        className="piece-wrap piece-wrap--flying"
         style={{
           position: 'fixed',
           left: startRect.left,
@@ -108,12 +116,14 @@ export function AnimatingPiece({
         }}
         aria-hidden="true"
       >
-        {mainLabel}
+        <span className={`piece piece--${piece.owner}${isGoteMain ? ' piece--rotated' : ''}`}>
+          {[...mainLabel].map((char, i) => <span key={char + i}>{char}</span>)}
+        </span>
       </span>
       {capturePiece && captureStartRect && (
         <span
           ref={captureRef}
-          className={`piece piece--${capturePiece.owner}${capturePiece.owner === 'gote' ? ' piece--rotated' : ''} piece--flying`}
+          className="piece-wrap piece-wrap--flying"
           style={{
             position: 'fixed',
             left: captureStartRect.left,
@@ -124,7 +134,9 @@ export function AnimatingPiece({
           }}
           aria-hidden="true"
         >
-          {getPieceLabel(capturePiece.type)}
+          <span className={`piece piece--${capturePiece.owner}${capturePiece.owner === 'gote' ? ' piece--rotated' : ''}`}>
+            {[...getPieceLabel(capturePiece.type)].map((char, i) => <span key={char + i}>{char}</span>)}
+          </span>
         </span>
       )}
     </>

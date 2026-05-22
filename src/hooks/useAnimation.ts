@@ -35,7 +35,9 @@ export function useAnimation(
     const board = refs.boardRef.current
     if (!board) return null
     const cell = board.querySelector(`[data-row="${row}"][data-col="${col}"]`)
-    return cell?.getBoundingClientRect() ?? null
+    if (!cell) return null
+    const pieceWrap = cell.querySelector('.piece-wrap')
+    return (pieceWrap ?? cell).getBoundingClientRect()
   }
 
   function getCapturedRect(owner: Player): DOMRect | null {
@@ -73,10 +75,8 @@ export function useAnimation(
 
     if (anim.captureAnimation) {
       const ca = anim.captureAnimation
-      if (ca.from.type === 'cell') {
+      if (ca.from.type === 'cell' && ca.to.type === 'captured') {
         cStart = getCellRect(ca.from.position.row, ca.from.position.col)
-      }
-      if (ca.to.type === 'captured') {
         cEnd = getCapturedRect(ca.to.owner)
       }
     }
