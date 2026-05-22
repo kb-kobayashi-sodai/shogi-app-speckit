@@ -1,32 +1,41 @@
 import { useReducer } from 'react'
-import type { GameState, Position, CapturablePieceType, Move } from '../game/types'
+import type { Dispatch } from 'react'
+import type { GameState, Position, CapturablePieceType, Move, GameMode } from '../game/types'
 import { createInitialGameState, processMove, processPromotionChoice, processResign, processReset } from '../game/gameEngine'
 import { getLegalMovesForPiece, getLegalDropPositions } from '../game/legalMoves'
 
-type GameAction =
+export type GameAction =
   | { type: 'CELL_CLICK'; payload: Position }
   | { type: 'CAPTURED_PIECE_CLICK'; payload: CapturablePieceType }
   | { type: 'PROMOTION_CHOICE'; payload: boolean }
   | { type: 'RESIGN' }
   | { type: 'RESET' }
+  | { type: 'CHANGE_MODE'; payload: GameMode }
+  | { type: 'COMPUTER_MOVE'; payload: Move }
+  | { type: 'SET_COMPUTER_THINKING'; payload: boolean }
 
 function reducer(state: GameState, action: GameAction): GameState {
-  if (action.type === 'RESET') return processReset()
+  if (action.type === 'RESET') return processReset(state.gameMode)
   if (action.type === 'RESIGN') return processResign(state)
   if (action.type === 'PROMOTION_CHOICE') return processPromotionChoice(state, action.payload)
+  if (action.type === 'CHANGE_MODE') return createInitialGameState(action.payload)
+  if (action.type === 'SET_COMPUTER_THINKING') return { ...state, isComputerThinking: action.payload }
+  if (action.type === 'COMPUTER_MOVE') {
+    const newState = processMove(state, action.payload)
+    return { ...newState, isComputerThinking: false }
+  }
 
-  // 対局終了・成り選択中は操作不可
+  // 対局終了・成り選択中・コンピュータ思考中は操作不可
   if (state.status === 'checkmate' || state.status === 'resigned' || state.status === 'draw') return state
   if (state.pendingPromotion !== null) return state
+  if (state.isComputerThinking) return state
 
   if (action.type === 'CAPTURED_PIECE_CLICK') {
     const pieceType = action.payload
     const captured = state.capturedPieces[state.currentPlayer]
 
-    // 持ち駒がない
     if (captured[pieceType] <= 0) return state
 
-    // 同じ持ち駒を再度クリックで選択解除
     if (state.selectedCapturedPiece === pieceType) {
       return { ...state, selectedCapturedPiece: null, selectedPosition: null, legalMoves: [] }
     }
@@ -43,7 +52,6 @@ function reducer(state: GameState, action: GameAction): GameState {
   if (action.type === 'CELL_CLICK') {
     const clickedPos = action.payload
 
-    // 持ち駒選択中 → 打つ先を選択
     if (state.selectedCapturedPiece !== null) {
       const isLegal = state.legalMoves.some(m => m.row === clickedPos.row && m.col === clickedPos.col)
       if (isLegal) {
@@ -55,34 +63,28 @@ function reducer(state: GameState, action: GameAction): GameState {
         }
         return processMove({ ...state, selectedCapturedPiece: null, selectedPosition: null, legalMoves: [] }, move)
       }
-      // 非合法マスをクリック → 選択解除
       return { ...state, selectedCapturedPiece: null, selectedPosition: null, legalMoves: [] }
     }
 
     const clickedPiece = state.board[clickedPos.row][clickedPos.col]
 
-    // 1回目のクリック: 自分の駒を選択
     if (state.selectedPosition === null) {
       if (!clickedPiece || clickedPiece.owner !== state.currentPlayer) return state
       const moves = getLegalMovesForPiece(state.board, clickedPos, state.capturedPieces)
       return { ...state, selectedPosition: clickedPos, legalMoves: moves, selectedCapturedPiece: null }
     }
 
-    // 2回目のクリック
     const selectedPiece = state.board[state.selectedPosition.row][state.selectedPosition.col]
 
-    // 同じマスを再度クリックで選択解除
     if (clickedPos.row === state.selectedPosition.row && clickedPos.col === state.selectedPosition.col) {
       return { ...state, selectedPosition: null, legalMoves: [] }
     }
 
-    // 自分の別の駒をクリック → 再選択
     if (clickedPiece && clickedPiece.owner === state.currentPlayer) {
       const moves = getLegalMovesForPiece(state.board, clickedPos, state.capturedPieces)
       return { ...state, selectedPosition: clickedPos, legalMoves: moves }
     }
 
-    // 合法手マスをクリック → 移動
     const isLegal = state.legalMoves.some(m => m.row === clickedPos.row && m.col === clickedPos.col)
     if (!isLegal || !selectedPiece) {
       return { ...state, selectedPosition: null, legalMoves: [] }
@@ -103,11 +105,13 @@ function reducer(state: GameState, action: GameAction): GameState {
 
 export interface UseGameReturn {
   state: GameState
+  dispatch: Dispatch<GameAction>
   handleCellClick: (position: Position) => void
   handleCapturedPieceClick: (pieceType: CapturablePieceType) => void
   handlePromotionChoice: (promote: boolean) => void
   handleResign: () => void
   handleReset: () => void
+  handleChangeMode: (mode: GameMode) => void
 }
 
 export function useGame(): UseGameReturn {
@@ -115,10 +119,12 @@ export function useGame(): UseGameReturn {
 
   return {
     state,
+    dispatch,
     handleCellClick: (pos) => dispatch({ type: 'CELL_CLICK', payload: pos }),
     handleCapturedPieceClick: (pt) => dispatch({ type: 'CAPTURED_PIECE_CLICK', payload: pt }),
     handlePromotionChoice: (p) => dispatch({ type: 'PROMOTION_CHOICE', payload: p }),
     handleResign: () => dispatch({ type: 'RESIGN' }),
     handleReset: () => dispatch({ type: 'RESET' }),
+    handleChangeMode: (mode) => dispatch({ type: 'CHANGE_MODE', payload: mode }),
   }
 }

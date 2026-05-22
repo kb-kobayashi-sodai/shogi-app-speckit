@@ -1,4 +1,4 @@
-import type { GameState, Board, Move, Player, AllCapturedPieces, PendingPromotion } from './types'
+import type { GameState, Board, Move, Player, AllCapturedPieces, PendingPromotion, GameMode } from './types'
 import { INITIAL_BOARD, INITIAL_CAPTURED } from './constants'
 import { canPromote, mustPromote, promote, unpromote } from './pieces'
 import { isUnderAttack, hasAnyLegalMove, isInEnemyZone } from './legalMoves'
@@ -61,7 +61,7 @@ export function applyMove(
   return { board: newBoard, capturedPieces: newCaptured }
 }
 
-export function createInitialGameState(): GameState {
+export function createInitialGameState(gameMode: GameMode = 'human'): GameState {
   const board = INITIAL_BOARD.map(row => row.map(p => p ? { ...p } : null))
   return {
     board,
@@ -77,6 +77,8 @@ export function createInitialGameState(): GameState {
     selectedPosition: null,
     legalMoves: [],
     selectedCapturedPiece: null,
+    gameMode,
+    isComputerThinking: false,
   }
 }
 
@@ -188,9 +190,10 @@ export function processResign(state: GameState): GameState {
     legalMoves: [],
     selectedCapturedPiece: null,
     pendingPromotion: null,
+    isComputerThinking: false,
   }
 }
 
-export function processReset(): GameState {
-  return createInitialGameState()
+export function processReset(gameMode: GameMode): GameState {
+  return createInitialGameState(gameMode)
 }

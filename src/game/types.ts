@@ -1,5 +1,7 @@
 export type Player = 'sente' | 'gote'
 
+export type GameMode = 'human' | 'computer'
+
 export type PieceType =
   | 'fu' | 'kyo' | 'kei' | 'gin' | 'kin' | 'kaku' | 'hi' | 'ou'
   | 'tofu' | 'narikyo' | 'narikei' | 'narigin' | 'uma' | 'ryu'
@@ -60,4 +62,6 @@ export interface GameState {
   selectedPosition: Position | null
   legalMoves: Position[]
   selectedCapturedPiece: CapturablePieceType | null
+  gameMode: GameMode
+  isComputerThinking: boolean
 }
