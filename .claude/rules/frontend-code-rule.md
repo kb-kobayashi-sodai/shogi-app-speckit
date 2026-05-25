@@ -1,11 +1,5 @@
 # コーディングルール（TypeScript/JavaScript）
 
-## 目的
-
-型安全性・可読性・保守性を確保し、バグの混入を防ぐ。
-
-## ルール一覧
-
 ### 開発フロー
 
 - コーディングは原則として SpecKit（`/speckit-*` コマンド群）を使用して進める
@@ -42,12 +36,6 @@
 - 定数（変更されない値）: UPPER_SNAKE_CASE
 - 型・インターフェース・コンポーネント: PascalCase
 - 真偽値変数: `is`, `has`, `can`, `should` プレフィックス（例: `isComputerThinking`, `isGameOver`）
-
-### このプロジェクト固有の命名例（参考）
-
-- 真偽値: `isComputerThinking`, `isGameOver`, `isSideMenuOpen`
-- ゲーム状態: `currentPlayer`, `selectedPosition`, `gameMode`, `pendingPromotion`
-- 定数: `BOARD_SIZE`, `INITIAL_BOARD`, `ENEMY_ZONE_ROWS`（`src/game/constants.ts`）
 
 ### その他
 
